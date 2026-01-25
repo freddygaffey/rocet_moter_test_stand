@@ -8,6 +8,9 @@ class ThrustChart {
         this.ctx = this.canvas.getContext('2d');
         this.dataPoints = [];
         this.maxDataPoints = 3000; // Keep last 3000 points (~37.5 seconds at 80Hz)
+        this.cropStart = null;
+        this.cropEnd = null;
+        this.cropEnabled = false;
 
         this.chart = new Chart(this.ctx, {
             type: 'line',
@@ -57,7 +60,12 @@ class ThrustChart {
                             color: '#cbd5e1'
                         },
                         ticks: {
-                            color: '#cbd5e1'
+                            color: '#cbd5e1',
+                            stepSize: 0.1,  // More granular time marks
+                            maxTicksLimit: 20,
+                            callback: function(value) {
+                                return value.toFixed(2);  // Show 2 decimal places
+                            }
                         },
                         grid: {
                             color: '#475569'
@@ -123,5 +131,83 @@ class ThrustChart {
             this.chart.options.scales.x.min = undefined;
             this.chart.options.scales.x.max = undefined;
         }
+    }
+
+    setCropRegion(startTime, endTime) {
+        // Set crop region markers
+        this.cropStart = startTime;
+        this.cropEnd = endTime;
+        this.cropEnabled = true;
+
+        // Add vertical line annotations for crop markers
+        if (!this.chart.options.plugins.annotation) {
+            this.chart.options.plugins.annotation = { annotations: {} };
+        }
+
+        this.chart.options.plugins.annotation.annotations = {
+            cropStart: {
+                type: 'line',
+                xMin: startTime,
+                xMax: startTime,
+                borderColor: 'rgba(255, 193, 7, 0.8)',
+                borderWidth: 2,
+                label: {
+                    display: true,
+                    content: 'Start',
+                    position: 'start',
+                    backgroundColor: 'rgba(255, 193, 7, 0.8)'
+                }
+            }
+        };
+
+        if (endTime !== null && endTime !== undefined) {
+            this.chart.options.plugins.annotation.annotations.cropEnd = {
+                type: 'line',
+                xMin: endTime,
+                xMax: endTime,
+                borderColor: 'rgba(255, 87, 34, 0.8)',
+                borderWidth: 2,
+                label: {
+                    display: true,
+                    content: 'End',
+                    position: 'start',
+                    backgroundColor: 'rgba(255, 87, 34, 0.8)'
+                }
+            };
+
+            // Add shaded region for cropped area
+            this.chart.options.plugins.annotation.annotations.cropRegion = {
+                type: 'box',
+                xMin: startTime,
+                xMax: endTime,
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                borderWidth: 0
+            };
+        }
+
+        this.chart.update();
+    }
+
+    clearCropRegion() {
+        this.cropStart = null;
+        this.cropEnd = null;
+        this.cropEnabled = false;
+
+        if (this.chart.options.plugins.annotation) {
+            this.chart.options.plugins.annotation.annotations = {};
+        }
+
+        this.chart.update();
+    }
+
+    getTimeAtX(clientX) {
+        // Convert mouse X position to chart time value
+        const rect = this.canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+
+        const xScale = this.chart.scales.x;
+        const timeValue = xScale.getValueForPixel(x);
+
+        return timeValue;
     }
 }

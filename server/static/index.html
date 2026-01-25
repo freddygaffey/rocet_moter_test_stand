@@ -165,17 +165,24 @@
     <div id="crop-modal" class="modal">
         <div class="modal-content">
             <h3>Crop Test Data</h3>
-            <p>Specify the time range to keep (in seconds). Data outside this range will be removed and the test will be re-analyzed.</p>
+            <p>Click on the chart to set crop markers, or enter times manually. Cropping is non-destructive - you can reset anytime.</p>
+            <div id="crop-current-status" style="margin-bottom: 1rem; padding: 0.75rem; background: #1e293b; border-radius: 0.375rem; display: none;">
+                <div style="font-weight: bold; margin-bottom: 0.5rem;">Current Crop:</div>
+                <div id="crop-status-text" style="color: #cbd5e1;"></div>
+            </div>
             <div class="form-group">
                 <label for="crop-start-input">Start Time (seconds):</label>
                 <input type="number" id="crop-start-input" placeholder="e.g., 0.5" step="0.01" min="0" value="0">
+                <small style="color: #94a3b8;">Click on chart or type time</small>
             </div>
             <div class="form-group">
-                <label for="crop-end-input">End Time (seconds, leave empty for end):</label>
-                <input type="number" id="crop-end-input" placeholder="e.g., 2.5" step="0.01" min="0">
+                <label for="crop-end-input">End Time (seconds):</label>
+                <input type="number" id="crop-end-input" placeholder="Leave empty for end" step="0.01" min="0">
+                <small style="color: #94a3b8;">Click on chart or type time</small>
             </div>
             <div class="modal-buttons">
-                <button id="btn-crop-confirm" class="btn btn-primary">Crop & Re-analyze</button>
+                <button id="btn-crop-confirm" class="btn btn-primary">Apply Crop</button>
+                <button id="btn-crop-reset" class="btn btn-secondary">Reset Crop</button>
                 <button id="btn-crop-cancel" class="btn btn-secondary">Cancel</button>
             </div>
         </div>

@@ -208,7 +208,7 @@ def download_test_pdf(test_id):
 
 @app.route('/api/tests/<int:test_id>/crop', methods=['POST'])
 def crop_test_data(test_id):
-    """Crop test data to specified time range and re-analyze."""
+    """Set crop parameters for test data (non-destructive)."""
     try:
         test = db.get_test(test_id)
         if not test:
@@ -222,83 +222,38 @@ def crop_test_data(test_id):
         start_time = data.get('start_time', 0)  # seconds
         end_time = data.get('end_time')  # seconds
 
-        if not test['data'] or not test['data'].get('readings'):
-            return jsonify({
-                'success': False,
-                'error': 'No data to crop'
-            }), 400
-
-        # Filter readings
-        readings = test['data']['readings']
-        test_start = readings[0]['timestamp']
-
-        cropped_readings = []
-        for reading in readings:
-            rel_time_s = (reading['timestamp'] - test_start) / 1000.0
-
-            if rel_time_s >= start_time:
-                if end_time is None or rel_time_s <= end_time:
-                    cropped_readings.append(reading)
-
-        if len(cropped_readings) < 2:
-            return jsonify({
-                'success': False,
-                'error': 'Cropped data too short (need at least 2 points)'
-            }), 400
-
-        # Extract time and force arrays for analysis
-        crop_start = cropped_readings[0]['timestamp']
-        time_data = [(r['timestamp'] - crop_start) / 1000.0 for r in cropped_readings]
-        force_data = [r.get('force', 0) for r in cropped_readings]
-
-        # Re-analyze
-        analyzer = ThrustAnalyzer(time_data, force_data, Config)
-        new_analysis = analyzer.compute_all_metrics()
-
-        # Update test data
-        new_test_data = {
-            'timestamp': test['data']['timestamp'],
-            'duration_ms': cropped_readings[-1]['timestamp'] - cropped_readings[0]['timestamp'],
-            'data_points': len(cropped_readings),
-            'readings': cropped_readings,
-            'cropped': True,
-            'crop_range': {'start': start_time, 'end': end_time}
-        }
-
-        # Update database
-        import sqlite3
-        import json
-        with sqlite3.connect(db.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE tests
-                SET duration_ms = ?,
-                    max_thrust = ?,
-                    avg_thrust = ?,
-                    total_impulse = ?,
-                    motor_class = ?,
-                    data_json = ?,
-                    analysis_json = ?
-                WHERE id = ?
-            ''', (
-                new_test_data['duration_ms'],
-                new_analysis.get('peak_thrust_n'),
-                new_analysis.get('avg_thrust_n'),
-                new_analysis.get('total_impulse_ns'),
-                new_analysis.get('motor_class'),
-                json.dumps(new_test_data),
-                json.dumps(new_analysis),
-                test_id
-            ))
-            conn.commit()
+        # Set crop parameters
+        db.set_crop(test_id, start_time, end_time)
 
         return jsonify({
             'success': True,
-            'message': 'Test data cropped and re-analyzed',
-            'analysis': new_analysis,
-            'data_points': len(cropped_readings)
+            'message': 'Crop parameters set',
+            'crop_start': start_time,
+            'crop_end': end_time
         })
 
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/tests/<int:test_id>/reset_crop', methods=['POST'])
+def reset_crop(test_id):
+    """Reset crop parameters to view full test data."""
+    try:
+        success = db.reset_crop(test_id)
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Crop reset - showing full data'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Test not found'
+            }), 404
     except Exception as e:
         return jsonify({
             'success': False,

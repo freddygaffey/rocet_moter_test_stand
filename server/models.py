@@ -37,7 +37,9 @@ class Database:
                     total_impulse REAL,
                     motor_class TEXT,
                     data_json TEXT,
-                    analysis_json TEXT
+                    analysis_json TEXT,
+                    crop_start REAL,
+                    crop_end REAL
                 )
             ''')
 
@@ -46,6 +48,16 @@ class Database:
                 cursor.execute('ALTER TABLE tests ADD COLUMN label TEXT')
             except sqlite3.OperationalError:
                 pass  # Column already exists
+
+            # Add crop columns if they don't exist (for existing databases)
+            try:
+                cursor.execute('ALTER TABLE tests ADD COLUMN crop_start REAL')
+            except sqlite3.OperationalError:
+                pass
+            try:
+                cursor.execute('ALTER TABLE tests ADD COLUMN crop_end REAL')
+            except sqlite3.OperationalError:
+                pass
 
             # Calibration table
             cursor.execute('''
@@ -105,7 +117,9 @@ class Database:
                     'total_impulse': row['total_impulse'],
                     'motor_class': row['motor_class'],
                     'data': json.loads(row['data_json']) if row['data_json'] else None,
-                    'analysis': json.loads(row['analysis_json']) if row['analysis_json'] else None
+                    'analysis': json.loads(row['analysis_json']) if row['analysis_json'] else None,
+                    'crop_start': row['crop_start'],
+                    'crop_end': row['crop_end']
                 }
             return None
 
@@ -138,6 +152,28 @@ class Database:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute('UPDATE tests SET label = ? WHERE id = ?', (label, test_id))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def set_crop(self, test_id: int, start_time: float, end_time: float = None) -> bool:
+        """Set crop parameters for a test (non-destructive)."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE tests SET crop_start = ?, crop_end = ? WHERE id = ?',
+                (start_time, end_time, test_id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def reset_crop(self, test_id: int) -> bool:
+        """Reset crop parameters to view full test data."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'UPDATE tests SET crop_start = NULL, crop_end = NULL WHERE id = ?',
+                (test_id,)
+            )
             conn.commit()
             return cursor.rowcount > 0
 

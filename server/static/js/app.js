@@ -72,7 +72,10 @@ class TestStandApp {
             cropStartInput: document.getElementById('crop-start-input'),
             cropEndInput: document.getElementById('crop-end-input'),
             btnCropConfirm: document.getElementById('btn-crop-confirm'),
+            btnCropReset: document.getElementById('btn-crop-reset'),
             btnCropCancel: document.getElementById('btn-crop-cancel'),
+            cropCurrentStatus: document.getElementById('crop-current-status'),
+            cropStatusText: document.getElementById('crop-status-text'),
 
             testLabelInput: document.getElementById('test-label-input'),
         };
@@ -92,6 +95,7 @@ class TestStandApp {
         this.elements.btnCalibrateCancel.addEventListener('click', () => this.hideCalibrateModal());
 
         this.elements.btnCropConfirm.addEventListener('click', () => this.cropData());
+        this.elements.btnCropReset.addEventListener('click', () => this.resetCrop());
         this.elements.btnCropCancel.addEventListener('click', () => this.hideCropModal());
     }
 
@@ -436,6 +440,13 @@ class TestStandApp {
             const forceArray = test.data.readings.map(r => r.force);
 
             this.chart.setData(timeArray, forceArray);
+
+            // Apply crop markers if crop is set
+            if (test.crop_start !== null && test.crop_start !== undefined) {
+                this.chart.setCropRegion(test.crop_start, test.crop_end);
+            } else {
+                this.chart.clearCropRegion();
+            }
         }
 
         // Display analysis
@@ -517,6 +528,24 @@ class TestStandApp {
     }
 
     showCropModal() {
+        // Show current crop status if available
+        if (this.chart.cropEnabled) {
+            const cropStart = this.chart.cropStart !== null ? this.chart.cropStart.toFixed(2) + 's' : 'none';
+            const cropEnd = this.chart.cropEnd !== null ? this.chart.cropEnd.toFixed(2) + 's' : 'end';
+            this.elements.cropStatusText.textContent = `${cropStart} to ${cropEnd}`;
+            this.elements.cropCurrentStatus.style.display = 'block';
+
+            // Pre-fill inputs with current crop values
+            if (this.chart.cropStart !== null) {
+                this.elements.cropStartInput.value = this.chart.cropStart;
+            }
+            if (this.chart.cropEnd !== null) {
+                this.elements.cropEndInput.value = this.chart.cropEnd;
+            }
+        } else {
+            this.elements.cropCurrentStatus.style.display = 'none';
+        }
+
         this.elements.cropModal.style.display = 'flex';
     }
 
@@ -536,35 +565,57 @@ class TestStandApp {
         const endTimeValue = this.elements.cropEndInput.value.trim();
         const endTime = endTimeValue ? parseFloat(endTimeValue) : null;
 
-        if (confirm(`Crop test data from ${startTime}s to ${endTime !== null ? endTime + 's' : 'end'}? This will permanently modify the test data and re-analyze it.`)) {
-            fetch(`/api/tests/${this.currentTestId}/crop`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    start_time: startTime,
-                    end_time: endTime
-                })
+        fetch(`/api/tests/${this.currentTestId}/crop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                start_time: startTime,
+                end_time: endTime
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('Test data cropped successfully');
-                    this.hideCropModal();
-                    // Reload the test detail to show updated data
-                    this.loadTestDetail(this.currentTestId);
-                    this.loadTestHistory();
-                    alert(`Test cropped successfully! ${data.data_points} data points remaining.`);
-                } else {
-                    alert('Failed to crop test: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error cropping test:', error);
-                alert('Failed to crop test');
-            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Crop parameters set successfully');
+                this.chart.setCropRegion(startTime, endTime);
+                this.hideCropModal();
+                this.loadTestDetail(this.currentTestId);
+                alert(`Crop applied! Data will be filtered from ${startTime}s to ${endTime !== null ? endTime + 's' : 'end'}. Click "Reset Crop" to view full data.`);
+            } else {
+                alert('Failed to set crop: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error setting crop:', error);
+            alert('Failed to set crop');
+        });
+    }
+
+    resetCrop() {
+        if (!this.currentTestId) {
+            alert('No test selected');
+            return;
         }
 
-        this.hideCropModal();
+        fetch(`/api/tests/${this.currentTestId}/reset_crop`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Crop reset successfully');
+                this.chart.clearCropRegion();
+                this.hideCropModal();
+                this.loadTestDetail(this.currentTestId);
+                alert('Crop reset - showing full test data');
+            } else {
+                alert('Failed to reset crop: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error resetting crop:', error);
+            alert('Failed to reset crop');
+        });
     }
 }
 
