@@ -89,6 +89,11 @@ class TestReportGenerator:
             story.append(Spacer(1, 0.2*inch))
             story.extend(self._build_warnings_section(test_data['analysis']['warnings']))
 
+        # Raw data table (on new page)
+        if test_data.get('data') and test_data['data'].get('readings'):
+            story.append(PageBreak())
+            story.extend(self._build_raw_data_section(test_data))
+
         # Build PDF
         doc.build(story)
         buffer.seek(0)
@@ -248,4 +253,72 @@ class TestReportGenerator:
             elements.append(Paragraph(f"• {warning}", self.styles['Normal']))
             elements.append(Spacer(1, 0.1*inch))
 
+        return elements
+
+    def _build_raw_data_section(self, test_data: Dict) -> List:
+        """Build raw data table section."""
+        elements = []
+
+        elements.append(Paragraph("Raw Data", self.styles['SectionHeader']))
+        elements.append(Spacer(1, 0.1*inch))
+
+        readings = test_data['data']['readings']
+        start_time = readings[0]['timestamp']
+
+        # Limit to reasonable number of rows (e.g., every 10th point if more than 500 points)
+        step = max(1, len(readings) // 500)
+
+        # Build table data
+        table_data = [['Time (s)', 'Force (N)', 'Raw ADC']]
+
+        for i in range(0, len(readings), step):
+            reading = readings[i]
+            time_s = (reading['timestamp'] - start_time) / 1000.0
+            force_n = reading.get('force', 0)
+            raw_adc = reading.get('raw', 0)
+
+            table_data.append([
+                f"{time_s:.3f}",
+                f"{force_n:.2f}",
+                f"{raw_adc}"
+            ])
+
+        # Add note if data was downsampled
+        if step > 1:
+            note = f"Note: Showing every {step} data points ({len(table_data)-1} of {len(readings)} total points)"
+            elements.append(Paragraph(note, self.styles['Normal']))
+            elements.append(Spacer(1, 0.1*inch))
+
+        # Create table with smaller font
+        table = Table(table_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch])
+        table.setStyle(TableStyle([
+            # Header row
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563eb')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+
+            # Data rows
+            ('FONTNAME', (0, 1), (-1, -1), 'Courier'),
+            ('FONTSIZE', (0, 1), (-1, -1), 7),
+            ('ALIGN', (0, 1), (0, -1), 'RIGHT'),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+            ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
+
+            # Grid
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+
+            # Padding
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+
+            # Alternating row colors
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+        ]))
+
+        elements.append(table)
         return elements
