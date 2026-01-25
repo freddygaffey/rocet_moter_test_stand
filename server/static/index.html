@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket Motor Test Stand</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@2.0.0/dist/chartjs-plugin-streaming.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <h1>🚀 Rocket Motor Test Stand</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-label">Server:</span>
+                    <span id="server-status" class="status-indicator disconnected">Disconnected</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">ESP32:</span>
+                    <span id="esp32-status" class="status-indicator disconnected">Offline</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Recording:</span>
+                    <span id="recording-status" class="status-indicator idle">Idle</span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Live View Section -->
+            <section class="live-view">
+                <h2>Live Thrust</h2>
+                <div class="chart-container">
+                    <canvas id="thrust-chart"></canvas>
+                </div>
+                <div class="live-stats">
+                    <div class="stat-card">
+                        <div class="stat-label">Current</div>
+                        <div class="stat-value" id="current-thrust">0.00</div>
+                        <div class="stat-unit">N</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Peak</div>
+                        <div class="stat-value" id="peak-thrust">0.00</div>
+                        <div class="stat-unit">N</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Duration</div>
+                        <div class="stat-value" id="test-duration">0.00</div>
+                        <div class="stat-unit">s</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Impulse</div>
+                        <div class="stat-value" id="current-impulse">0.00</div>
+                        <div class="stat-unit">N·s</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Controls Section -->
+            <section class="controls">
+                <h2>Controls</h2>
+                <div class="control-buttons">
+                    <button id="btn-start-test" class="btn btn-primary" disabled>Start Test</button>
+                    <button id="btn-stop-test" class="btn btn-danger" disabled>Stop Test</button>
+                    <button id="btn-tare" class="btn btn-secondary" disabled>Tare</button>
+                    <button id="btn-calibrate" class="btn btn-secondary" disabled>Calibrate</button>
+                </div>
+            </section>
+
+            <!-- Analysis Section -->
+            <section class="analysis" id="analysis-section" style="display: none;">
+                <h2>Test Analysis</h2>
+                <div id="analysis-content" class="analysis-grid">
+                    <!-- Populated by JavaScript -->
+                </div>
+                <button id="btn-download-csv" class="btn btn-secondary">Download CSV</button>
+            </section>
+
+            <!-- Test History Section -->
+            <section class="history">
+                <h2>Test History</h2>
+                <div class="history-controls">
+                    <button id="btn-refresh-history" class="btn btn-small">Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table id="test-history-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Duration</th>
+                                <th>Peak</th>
+                                <th>Impulse</th>
+                                <th>Class</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 20px;">No tests recorded yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Calibration Modal -->
+    <div id="calibrate-modal" class="modal">
+        <div class="modal-content">
+            <h3>Calibrate Load Cell</h3>
+            <p>Place a known mass on the load cell and enter its value below:</p>
+            <div class="form-group">
+                <label for="known-mass-input">Known Mass (grams):</label>
+                <input type="number" id="known-mass-input" placeholder="e.g., 500" step="1" min="1">
+            </div>
+            <div class="modal-buttons">
+                <button id="btn-calibrate-confirm" class="btn btn-primary">Calibrate</button>
+                <button id="btn-calibrate-cancel" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/charts.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
