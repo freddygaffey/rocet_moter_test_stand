@@ -30,6 +30,7 @@ class Database:
                 CREATE TABLE IF NOT EXISTS tests (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    label TEXT,
                     duration_ms INTEGER,
                     max_thrust REAL,
                     avg_thrust REAL,
@@ -39,6 +40,12 @@ class Database:
                     analysis_json TEXT
                 )
             ''')
+
+            # Add label column if it doesn't exist (for existing databases)
+            try:
+                cursor.execute('ALTER TABLE tests ADD COLUMN label TEXT')
+            except sqlite3.OperationalError:
+                pass  # Column already exists
 
             # Calibration table
             cursor.execute('''
@@ -53,18 +60,19 @@ class Database:
 
             conn.commit()
 
-    def save_test(self, test_data: Dict, analysis_data: Dict) -> int:
+    def save_test(self, test_data: Dict, analysis_data: Dict, label: str = None) -> int:
         """Save a test with its analysis results."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
             cursor.execute('''
                 INSERT INTO tests (
-                    duration_ms, max_thrust, avg_thrust, total_impulse,
+                    label, duration_ms, max_thrust, avg_thrust, total_impulse,
                     motor_class, data_json, analysis_json
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
+                label,
                 test_data.get('duration_ms'),
                 analysis_data.get('peak_thrust_n'),
                 analysis_data.get('avg_thrust_n'),
@@ -90,6 +98,7 @@ class Database:
                 return {
                     'id': row['id'],
                     'timestamp': row['timestamp'],
+                    'label': row['label'],
                     'duration_ms': row['duration_ms'],
                     'max_thrust': row['max_thrust'],
                     'avg_thrust': row['avg_thrust'],
@@ -107,7 +116,7 @@ class Database:
             cursor = conn.cursor()
 
             cursor.execute('''
-                SELECT id, timestamp, duration_ms, max_thrust, avg_thrust,
+                SELECT id, timestamp, label, duration_ms, max_thrust, avg_thrust,
                        total_impulse, motor_class
                 FROM tests
                 ORDER BY timestamp DESC
@@ -115,6 +124,22 @@ class Database:
             ''', (limit,))
 
             return [dict(row) for row in cursor.fetchall()]
+
+    def delete_test(self, test_id: int) -> bool:
+        """Delete a test by ID."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM tests WHERE id = ?', (test_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_test_label(self, test_id: int, label: str) -> bool:
+        """Update a test's label."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('UPDATE tests SET label = ? WHERE id = ?', (label, test_id))
+            conn.commit()
+            return cursor.rowcount > 0
 
     def save_calibration(self, offset: int, scale: float, points: List[Dict]):
         """Save calibration data."""

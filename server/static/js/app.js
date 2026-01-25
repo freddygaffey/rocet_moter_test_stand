@@ -65,6 +65,8 @@ class TestStandApp {
             knownMassInput: document.getElementById('known-mass-input'),
             btnCalibrateConfirm: document.getElementById('btn-calibrate-confirm'),
             btnCalibrateCancel: document.getElementById('btn-calibrate-cancel'),
+
+            testLabelInput: document.getElementById('test-label-input'),
         };
 
         // Attach event listeners
@@ -238,8 +240,9 @@ class TestStandApp {
     }
 
     startTest() {
-        console.log('Starting test...');
-        this.socket.emit('start_test');
+        const label = this.elements.testLabelInput.value.trim();
+        console.log('Starting test with label:', label);
+        this.socket.emit('start_test', { label: label });
     }
 
     stopTest() {
@@ -364,7 +367,7 @@ class TestStandApp {
         if (!tests || tests.length === 0) {
             this.elements.historyTbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 20px;">No tests recorded yet</td>
+                    <td colspan="8" style="text-align: center; padding: 20px;">No tests recorded yet</td>
                 </tr>
             `;
             return;
@@ -374,10 +377,15 @@ class TestStandApp {
         tests.forEach(test => {
             const date = new Date(test.timestamp).toLocaleString();
             const duration = (test.duration_ms / 1000).toFixed(2);
+            const label = test.label || '';
+            const labelId = `label-${test.id}`;
 
             html += `
                 <tr onclick="app.loadTestDetail(${test.id})">
                     <td>${test.id}</td>
+                    <td>
+                        <span id="${labelId}" class="editable-label" onclick="event.stopPropagation(); app.editLabel(${test.id})">${label || '<em>click to add</em>'}</span>
+                    </td>
                     <td>${date}</td>
                     <td>${duration} s</td>
                     <td>${test.max_thrust ? test.max_thrust.toFixed(2) : 'N/A'} N</td>
@@ -385,6 +393,7 @@ class TestStandApp {
                     <td>${test.motor_class || 'N/A'}</td>
                     <td>
                         <button class="btn btn-small" onclick="event.stopPropagation(); app.downloadTestCSV(${test.id})">CSV</button>
+                        <button class="btn btn-small btn-danger" onclick="event.stopPropagation(); app.deleteTest(${test.id})">Delete</button>
                     </td>
                 </tr>
             `;
@@ -427,6 +436,55 @@ class TestStandApp {
 
     downloadTestCSV(testId) {
         window.location.href = `/api/tests/${testId}/csv`;
+    }
+
+    editLabel(testId) {
+        const labelElement = document.getElementById(`label-${testId}`);
+        const currentLabel = labelElement.textContent === 'click to add' ? '' : labelElement.textContent;
+
+        const newLabel = prompt('Enter new label:', currentLabel);
+        if (newLabel !== null) {
+            fetch(`/api/tests/${testId}/label`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label: newLabel })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    labelElement.textContent = newLabel || 'click to add';
+                    labelElement.style.fontStyle = newLabel ? 'normal' : 'italic';
+                    console.log('Label updated successfully');
+                } else {
+                    alert('Failed to update label: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating label:', error);
+                alert('Failed to update label');
+            });
+        }
+    }
+
+    deleteTest(testId) {
+        if (confirm('Are you sure you want to delete this test? This action cannot be undone.')) {
+            fetch(`/api/tests/${testId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Test deleted successfully');
+                    this.loadTestHistory();
+                } else {
+                    alert('Failed to delete test: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting test:', error);
+                alert('Failed to delete test');
+            });
+        }
     }
 }
 

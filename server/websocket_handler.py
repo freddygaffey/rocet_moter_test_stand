@@ -22,6 +22,7 @@ class WebSocketHandler:
         self.recording = False
         self.test_data = []
         self.test_start_time = None
+        self.test_label = None
 
         # Register handlers
         self._register_handlers()
@@ -77,7 +78,7 @@ class WebSocketHandler:
             emit('recording_status', {'recording': self.recording})
 
         @self.socketio.on('start_test', namespace='/dashboard')
-        def handle_start_test():
+        def handle_start_test(data=None):
             """Start recording test data."""
             if not self.esp32_connected:
                 emit('error', {'message': 'ESP32 not connected'})
@@ -86,8 +87,9 @@ class WebSocketHandler:
             self.recording = True
             self.test_data = []
             self.test_start_time = time.time()
+            self.test_label = data.get('label', '') if data else ''
 
-            print("Test recording started")
+            print(f"Test recording started with label: {self.test_label}")
 
             # Notify all dashboards
             self.socketio.emit('recording_status', {'recording': True}, namespace='/dashboard')
@@ -208,10 +210,10 @@ class WebSocketHandler:
             'readings': self.test_data  # Full data
         }
 
-        # Save to database
-        test_id = self.db.save_test(test_data, analysis)
+        # Save to database with label
+        test_id = self.db.save_test(test_data, analysis, label=self.test_label)
 
-        print(f"Test saved with ID: {test_id}")
+        print(f"Test saved with ID: {test_id}, Label: {self.test_label}")
         return test_id
 
     def get_status(self) -> Dict:

@@ -87,6 +87,53 @@ def get_test(test_id):
         }), 500
 
 
+@app.route('/api/tests/<int:test_id>', methods=['DELETE'])
+def delete_test(test_id):
+    """Delete a test."""
+    try:
+        success = db.delete_test(test_id)
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Test {test_id} deleted'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Test not found'
+            }), 404
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/tests/<int:test_id>/label', methods=['PUT'])
+def update_test_label(test_id):
+    """Update a test's label."""
+    try:
+        data = request.get_json()
+        label = data.get('label', '')
+
+        success = db.update_test_label(test_id, label)
+        if success:
+            return jsonify({
+                'success': True,
+                'message': f'Test {test_id} label updated'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Test not found'
+            }), 404
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/tests/<int:test_id>/csv', methods=['GET'])
 def download_test_csv(test_id):
     """Download test data as CSV."""

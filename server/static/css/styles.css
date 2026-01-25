@@ -403,3 +403,21 @@ tbody tr:hover {
         width: 100%;
     }
 }
+
+/* Editable label */
+.editable-label {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.editable-label:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.editable-label em {
+    color: var(--text-secondary);
+    font-style: italic;
+    opacity: 0.7;
+}

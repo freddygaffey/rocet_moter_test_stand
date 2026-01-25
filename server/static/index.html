@@ -89,6 +89,10 @@
             <!-- Controls Section -->
             <section class="controls">
                 <h2>Controls</h2>
+                <div class="form-group">
+                    <label for="test-label-input">Test Label (optional):</label>
+                    <input type="text" id="test-label-input" placeholder="e.g., C6-5, Test #1, Modified nozzle">
+                </div>
                 <div class="control-buttons">
                     <button id="btn-start-test" class="btn btn-primary" disabled>Start Test</button>
                     <button id="btn-stop-test" class="btn btn-danger" disabled>Stop Test</button>
@@ -117,6 +121,7 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>Label</th>
                                 <th>Date</th>
                                 <th>Duration</th>
                                 <th>Peak</th>
@@ -127,7 +132,7 @@
                         </thead>
                         <tbody id="history-tbody">
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 20px;">No tests recorded yet</td>
+                                <td colspan="8" style="text-align: center; padding: 20px;">No tests recorded yet</td>
                             </tr>
                         </tbody>
                     </table>
