@@ -18,12 +18,23 @@ class WebSocketHandler:
 
         # State management
         self.esp32_connected = False
+        self.esp32_ws = None  # Plain WebSocket connection from ESP32
         self.recording = False
         self.test_data = []
         self.test_start_time = None
 
         # Register handlers
         self._register_handlers()
+
+    def send_command_to_esp32(self, command: Dict):
+        """Send command to ESP32 via plain WebSocket."""
+        if self.esp32_ws is not None:
+            try:
+                import json
+                self.esp32_ws.send(json.dumps(command))
+                print(f"Sent command to ESP32: {command}")
+            except Exception as e:
+                print(f"Error sending command to ESP32: {e}")
 
     def _register_handlers(self):
         """Register all WebSocket event handlers."""
@@ -82,7 +93,7 @@ class WebSocketHandler:
             self.socketio.emit('recording_status', {'recording': True}, namespace='/dashboard')
 
             # Notify ESP32
-            self.socketio.emit('command', {'type': 'start_test'}, namespace='/esp32')
+            self.send_command_to_esp32({'type': 'start_test'})
 
         @self.socketio.on('stop_test', namespace='/dashboard')
         def handle_stop_test():
@@ -95,7 +106,7 @@ class WebSocketHandler:
             print(f"Test recording stopped. Data points: {len(self.test_data)}")
 
             # Notify ESP32
-            self.socketio.emit('command', {'type': 'stop_test'}, namespace='/esp32')
+            self.send_command_to_esp32({'type': 'stop_test'})
 
             # Process and analyze data
             if len(self.test_data) > 0:
@@ -123,7 +134,7 @@ class WebSocketHandler:
                 return
 
             print("Tare command sent")
-            self.socketio.emit('command', {'type': 'tare'}, namespace='/esp32')
+            self.send_command_to_esp32({'type': 'tare'})
             emit('message', {'text': 'Tare command sent'})
 
         @self.socketio.on('calibrate', namespace='/dashboard')
@@ -139,10 +150,10 @@ class WebSocketHandler:
                 return
 
             print(f"Calibrate command sent with known mass: {known_mass}g")
-            self.socketio.emit('command', {
+            self.send_command_to_esp32({
                 'type': 'calibrate',
                 'known_mass': known_mass
-            }, namespace='/esp32')
+            })
             emit('message', {'text': f'Calibration with {known_mass}g sent'})
 
         @self.socketio.on('get_tests', namespace='/dashboard')

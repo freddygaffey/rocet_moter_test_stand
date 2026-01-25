@@ -6,12 +6,12 @@
 #define WIFI_PASSWORD "Airport25"
 
 // Server connection
-#define SERVER_HOST "192.168.50.132"
+#define SERVER_HOST "deb.local"  // Using hostname instead of IP (or use IP like "192.168.50.132")
 #define SERVER_PORT 5000
 
 // HX711 pins (ESP32-C3)
-#define HX711_DOUT_PIN 4  // DT/DOUT pin (changed from 2)
-#define HX711_SCK_PIN 5   // SCK pin (changed from 3)
+#define HX711_DOUT_PIN 4  // DT/DOUT pin
+#define HX711_SCK_PIN 3   // SCK pin
 
 // Sampling configuration
 #define SAMPLE_RATE_HZ 80  // Match HX711 native rate

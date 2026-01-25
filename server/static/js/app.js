@@ -19,6 +19,11 @@ class TestStandApp {
         this.peakThrust = 0;
         this.currentImpulse = 0;
 
+        // Update rate tracking
+        this.lastUpdateTime = 0;
+        this.updateCount = 0;
+        this.updateRateWindow = [];
+
         // Chart
         this.chart = new ThrustChart('thrust-chart');
 
@@ -39,6 +44,10 @@ class TestStandApp {
             peakThrustDisplay: document.getElementById('peak-thrust'),
             testDuration: document.getElementById('test-duration'),
             currentImpulse: document.getElementById('current-impulse'),
+
+            rawValue: document.getElementById('raw-value'),
+            rawMass: document.getElementById('raw-mass'),
+            updateRate: document.getElementById('update-rate'),
 
             btnStartTest: document.getElementById('btn-start-test'),
             btnStopTest: document.getElementById('btn-stop-test'),
@@ -172,6 +181,32 @@ class TestStandApp {
     handleReading(data) {
         const time_s = (data.timestamp - (this.testStartTime || data.timestamp)) / 1000.0;
         const force_n = data.force;
+
+        // Update raw values display (always, not just when recording)
+        if (data.raw !== undefined) {
+            this.elements.rawValue.textContent = data.raw.toLocaleString();
+        }
+
+        // Calculate mass from force (reverse: F = m * g, so m = F / g)
+        const mass_g = (force_n / 9.81) * 1000;
+        this.elements.rawMass.textContent = mass_g.toFixed(2);
+
+        // Calculate update rate
+        const now = Date.now();
+        if (this.lastUpdateTime > 0) {
+            const dt = (now - this.lastUpdateTime) / 1000.0; // seconds
+            if (dt > 0) {
+                this.updateRateWindow.push(1.0 / dt);
+                // Keep last 10 samples
+                if (this.updateRateWindow.length > 10) {
+                    this.updateRateWindow.shift();
+                }
+                // Average rate
+                const avgRate = this.updateRateWindow.reduce((a, b) => a + b, 0) / this.updateRateWindow.length;
+                this.elements.updateRate.textContent = Math.round(avgRate);
+            }
+        }
+        this.lastUpdateTime = now;
 
         // Update chart
         if (this.recording) {

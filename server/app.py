@@ -2,6 +2,7 @@
 
 from flask import Flask, render_template, jsonify, request, send_file
 from flask_socketio import SocketIO
+from flask_sock import Sock
 from flask_cors import CORS
 import os
 import json
@@ -16,12 +17,15 @@ app = Flask(__name__, static_folder='static', template_folder='static')
 app.config.from_object(Config)
 CORS(app)
 
-# Initialize SocketIO
+# Initialize SocketIO for dashboard (Socket.IO protocol)
 socketio = SocketIO(
     app,
     cors_allowed_origins=app.config['SOCKETIO_CORS_ALLOWED_ORIGINS'],
     async_mode=app.config['SOCKETIO_ASYNC_MODE']
 )
+
+# Initialize Sock for ESP32 (plain WebSocket protocol)
+sock = Sock(app)
 
 # Initialize database
 db = Database()
@@ -155,6 +159,52 @@ def calibration():
                 'success': False,
                 'error': str(e)
             }), 500
+
+
+# Plain WebSocket endpoint for ESP32
+@sock.route('/esp32')
+def esp32_websocket(ws):
+    """Handle plain WebSocket connection from ESP32."""
+    print("ESP32 connected via plain WebSocket")
+    ws_handler.esp32_connected = True
+    ws_handler.esp32_ws = ws  # Store reference for sending commands
+
+    # Notify dashboards
+    socketio.emit('esp32_status', {'connected': True}, namespace='/dashboard')
+
+    try:
+        while True:
+            # Receive message from ESP32
+            data = ws.receive()
+            if data is None:
+                break
+
+            # Parse JSON
+            try:
+                message = json.loads(data)
+
+                # Handle different message types
+                if message.get('type') == 'reading':
+                    # Add server timestamp
+                    message['server_time'] = datetime.now().timestamp()
+
+                    # If recording, buffer the data
+                    if ws_handler.recording:
+                        ws_handler.test_data.append(message)
+
+                    # Broadcast to all dashboards via Socket.IO
+                    socketio.emit('reading', message, namespace='/dashboard')
+
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {e}")
+
+    except Exception as e:
+        print(f"ESP32 WebSocket error: {e}")
+    finally:
+        print("ESP32 disconnected")
+        ws_handler.esp32_connected = False
+        ws_handler.esp32_ws = None  # Clear reference
+        socketio.emit('esp32_status', {'connected': False}, namespace='/dashboard')
 
 
 @app.errorhandler(404)
