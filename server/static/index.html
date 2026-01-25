@@ -107,7 +107,11 @@
                 <div id="analysis-content" class="analysis-grid">
                     <!-- Populated by JavaScript -->
                 </div>
-                <button id="btn-download-csv" class="btn btn-secondary">Download CSV</button>
+                <div class="analysis-actions">
+                    <button id="btn-download-csv" class="btn btn-secondary">Download CSV</button>
+                    <button id="btn-download-pdf" class="btn btn-secondary">Download PDF Report</button>
+                    <button id="btn-crop-data" class="btn btn-secondary">Crop Data</button>
+                </div>
             </section>
 
             <!-- Test History Section -->
@@ -153,6 +157,26 @@
             <div class="modal-buttons">
                 <button id="btn-calibrate-confirm" class="btn btn-primary">Calibrate</button>
                 <button id="btn-calibrate-cancel" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crop Data Modal -->
+    <div id="crop-modal" class="modal">
+        <div class="modal-content">
+            <h3>Crop Test Data</h3>
+            <p>Specify the time range to keep (in seconds). Data outside this range will be removed and the test will be re-analyzed.</p>
+            <div class="form-group">
+                <label for="crop-start-input">Start Time (seconds):</label>
+                <input type="number" id="crop-start-input" placeholder="e.g., 0.5" step="0.01" min="0" value="0">
+            </div>
+            <div class="form-group">
+                <label for="crop-end-input">End Time (seconds, leave empty for end):</label>
+                <input type="number" id="crop-end-input" placeholder="e.g., 2.5" step="0.01" min="0">
+            </div>
+            <div class="modal-buttons">
+                <button id="btn-crop-confirm" class="btn btn-primary">Crop & Re-analyze</button>
+                <button id="btn-crop-cancel" class="btn btn-secondary">Cancel</button>
             </div>
         </div>
     </div>

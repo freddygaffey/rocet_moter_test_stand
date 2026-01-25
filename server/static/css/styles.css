@@ -362,6 +362,19 @@ tbody tr:hover {
     flex: 1;
 }
 
+/* Analysis actions */
+.analysis-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.analysis-actions .btn {
+    flex: 1;
+    min-width: 150px;
+}
+
 /* Responsive */
 @media (min-width: 768px) {
     main {

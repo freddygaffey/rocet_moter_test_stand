@@ -57,6 +57,8 @@ class TestStandApp {
             analysisSection: document.getElementById('analysis-section'),
             analysisContent: document.getElementById('analysis-content'),
             btnDownloadCSV: document.getElementById('btn-download-csv'),
+            btnDownloadPDF: document.getElementById('btn-download-pdf'),
+            btnCropData: document.getElementById('btn-crop-data'),
 
             btnRefreshHistory: document.getElementById('btn-refresh-history'),
             historyTbody: document.getElementById('history-tbody'),
@@ -65,6 +67,12 @@ class TestStandApp {
             knownMassInput: document.getElementById('known-mass-input'),
             btnCalibrateConfirm: document.getElementById('btn-calibrate-confirm'),
             btnCalibrateCancel: document.getElementById('btn-calibrate-cancel'),
+
+            cropModal: document.getElementById('crop-modal'),
+            cropStartInput: document.getElementById('crop-start-input'),
+            cropEndInput: document.getElementById('crop-end-input'),
+            btnCropConfirm: document.getElementById('btn-crop-confirm'),
+            btnCropCancel: document.getElementById('btn-crop-cancel'),
 
             testLabelInput: document.getElementById('test-label-input'),
         };
@@ -77,9 +85,14 @@ class TestStandApp {
 
         this.elements.btnRefreshHistory.addEventListener('click', () => this.loadTestHistory());
         this.elements.btnDownloadCSV.addEventListener('click', () => this.downloadCSV());
+        this.elements.btnDownloadPDF.addEventListener('click', () => this.downloadPDF());
+        this.elements.btnCropData.addEventListener('click', () => this.showCropModal());
 
         this.elements.btnCalibrateConfirm.addEventListener('click', () => this.calibrate());
         this.elements.btnCalibrateCancel.addEventListener('click', () => this.hideCalibrateModal());
+
+        this.elements.btnCropConfirm.addEventListener('click', () => this.cropData());
+        this.elements.btnCropCancel.addEventListener('click', () => this.hideCropModal());
     }
 
     connectWebSocket() {
@@ -398,6 +411,7 @@ class TestStandApp {
                     <td>${test.motor_class || 'N/A'}</td>
                     <td>
                         <button class="btn btn-small" onclick="event.stopPropagation(); app.downloadTestCSV(${test.id})">CSV</button>
+                        <button class="btn btn-small" onclick="event.stopPropagation(); app.downloadTestPDF(${test.id})">PDF</button>
                         <button class="btn btn-small btn-danger" onclick="event.stopPropagation(); app.deleteTest(${test.id})">Delete</button>
                     </td>
                 </tr>
@@ -441,6 +455,10 @@ class TestStandApp {
 
     downloadTestCSV(testId) {
         window.location.href = `/api/tests/${testId}/csv`;
+    }
+
+    downloadTestPDF(testId) {
+        window.location.href = `/api/tests/${testId}/pdf`;
     }
 
     editLabel(testId) {
@@ -490,6 +508,63 @@ class TestStandApp {
                 alert('Failed to delete test');
             });
         }
+    }
+
+    downloadPDF() {
+        if (this.currentTestId) {
+            window.location.href = `/api/tests/${this.currentTestId}/pdf`;
+        }
+    }
+
+    showCropModal() {
+        this.elements.cropModal.style.display = 'flex';
+    }
+
+    hideCropModal() {
+        this.elements.cropModal.style.display = 'none';
+        this.elements.cropStartInput.value = '0';
+        this.elements.cropEndInput.value = '';
+    }
+
+    cropData() {
+        if (!this.currentTestId) {
+            alert('No test selected');
+            return;
+        }
+
+        const startTime = parseFloat(this.elements.cropStartInput.value) || 0;
+        const endTimeValue = this.elements.cropEndInput.value.trim();
+        const endTime = endTimeValue ? parseFloat(endTimeValue) : null;
+
+        if (confirm(`Crop test data from ${startTime}s to ${endTime !== null ? endTime + 's' : 'end'}? This will permanently modify the test data and re-analyze it.`)) {
+            fetch(`/api/tests/${this.currentTestId}/crop`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    start_time: startTime,
+                    end_time: endTime
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Test data cropped successfully');
+                    this.hideCropModal();
+                    // Reload the test detail to show updated data
+                    this.loadTestDetail(this.currentTestId);
+                    this.loadTestHistory();
+                    alert(`Test cropped successfully! ${data.data_points} data points remaining.`);
+                } else {
+                    alert('Failed to crop test: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error cropping test:', error);
+                alert('Failed to crop test');
+            });
+        }
+
+        this.hideCropModal();
     }
 }
 
