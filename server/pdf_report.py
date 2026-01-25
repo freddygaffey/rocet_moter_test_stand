@@ -1,8 +1,6 @@
 """PDF report generator for rocket motor tests."""
 
 import io
-import os
-import tempfile
 from datetime import datetime
 from typing import Dict, List
 import matplotlib
@@ -171,16 +169,14 @@ class TestReportGenerator:
 
         plt.tight_layout()
 
-        # Save to temporary file
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-        plt.savefig(temp_file.name, dpi=150, bbox_inches='tight')
+        # Save to BytesIO buffer (keeps image in memory)
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight')
         plt.close(fig)
+        img_buffer.seek(0)
 
-        # Create ReportLab Image
-        img = Image(temp_file.name, width=6*inch, height=3.5*inch)
-
-        # Clean up temp file
-        os.unlink(temp_file.name)
+        # Create ReportLab Image from buffer
+        img = Image(img_buffer, width=6*inch, height=3.5*inch)
 
         return img
 
