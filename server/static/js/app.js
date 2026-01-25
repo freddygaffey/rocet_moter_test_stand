@@ -181,6 +181,11 @@ class TestStandApp {
     }
 
     handleReading(data) {
+        // Capture start time from first reading when recording starts
+        if (this.recording && this.testStartTime === null) {
+            this.testStartTime = data.timestamp;
+        }
+
         const time_s = (data.timestamp - (this.testStartTime || data.timestamp)) / 1000.0;
         const force_n = data.force;
 
@@ -282,7 +287,7 @@ class TestStandApp {
     onTestStarted() {
         // Reset test data
         this.testData = [];
-        this.testStartTime = Date.now();
+        this.testStartTime = null;  // Will be set from first reading
         this.peakThrust = 0;
         this.currentImpulse = 0;
 
